@@ -186,33 +186,68 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v4
+      
+      - name: Get release tag
+        id: get_tag
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Release tag: $TAG_NAME"
+      
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
           pattern: V2bX-*
-          merge-multiple: false
+          merge-multiple: true
       
       - name: List downloaded files
         run: |
-          echo "Downloaded artifacts:"
-          find ./artifacts -type f -name "*.zip*" | sort
+          echo "=== Artifacts directory structure ==="
+          find ./artifacts -type f | sort
           echo ""
-          echo "Total files:"
-          find ./artifacts -type f -name "*.zip*" | wc -l
+          echo "=== ZIP files ==="
+          find ./artifacts -type f -name "*.zip" | sort
+          echo ""
+          echo "=== Checksum files ==="
+          find ./artifacts -type f -name "*.zip.dgst" | sort
+          echo ""
+          echo "=== Total ZIP files ==="
+          find ./artifacts -type f -name "*.zip" | wc -l
+          echo "=== Total checksum files ==="
+          find ./artifacts -type f -name "*.zip.dgst" | wc -l
       
       - name: Prepare release files
+        id: prepare_files
         run: |
           # 收集所有 zip 和 dgst 文件到一个目录
           mkdir -p ./release_files
           find ./artifacts -type f \( -name "*.zip" -o -name "*.zip.dgst" \) -exec cp {} ./release_files/ \;
-          echo "Files prepared for release:"
+          echo ""
+          echo "=== Files prepared for release ==="
           ls -lh ./release_files/
+          echo ""
+          # 验证文件数量
+          ZIP_COUNT=$(find ./release_files -type f -name "*.zip" | wc -l)
+          DGST_COUNT=$(find ./release_files -type f -name "*.zip.dgst" | wc -l)
+          echo "ZIP files: $ZIP_COUNT"
+          echo "Checksum files: $DGST_COUNT"
+          if [ "$ZIP_COUNT" -eq 0 ]; then
+            echo "ERROR: No ZIP files found!"
+            exit 1
+          fi
+          echo "file_count=$ZIP_COUNT" >> $GITHUB_OUTPUT
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: ./release_files/*
+          tag_name: ${{ steps.get_tag.outputs.tag_name }}
+          files: |
+            ./release_files/*.zip
+            ./release_files/*.zip.dgst
           draft: false
           prerelease: false
           generate_release_notes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
