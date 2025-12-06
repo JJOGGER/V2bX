@@ -2,8 +2,8 @@ package panel
 
 import (
 	"fmt"
+	"strings"
 	"github.com/go-resty/resty/v2"
-	path2 "path"
 )
 
 // Debug set the client debug for client
@@ -12,7 +12,13 @@ func (c *Client) Debug() {
 }
 
 func (c *Client) assembleURL(path string) string {
-	return path2.Join(c.APIHost + path)
+	// Remove trailing slash from APIHost if present
+	baseURL := strings.TrimSuffix(c.APIHost, "/")
+	// Ensure path starts with /
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return baseURL + path
 }
 func (c *Client) checkResponse(res *resty.Response, path string, err error) error {
 	if err != nil {
