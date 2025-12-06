@@ -121,7 +121,9 @@ jobs:
       - name: Get other version
         if: ${{ github.event_name != 'release' }}
         run: |
-          echo "version=${{ github.sha }}" >> $GITHUB_ENV
+          # 尝试从 git tag 获取版本，否则使用 commit hash
+          VERSION=$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)
+          echo "version=$VERSION" >> $GITHUB_ENV
       - name: Build V2bX
         run: |
           echo "version: $version"
@@ -174,10 +176,9 @@ jobs:
           path: |
             ./V2bX-${{ steps.get_filename.outputs.ASSET_NAME }}/*
       - name: Upload binaries to release
-        uses: svenstaro/upload-release-action@v2
+        uses: softprops/action-gh-release@v1
         if: github.event_name == 'release'
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./V2bX-${{ steps.get_filename.outputs.ASSET_NAME }}.zip*
-          tag: ${{ github.ref }}
-          file_glob: true
+          files: |
+            ./V2bX-${{ steps.get_filename.outputs.ASSET_NAME }}.zip
+            ./V2bX-${{ steps.get_filename.outputs.ASSET_NAME }}.zip.dgst
