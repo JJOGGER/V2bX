@@ -107,13 +107,15 @@ func (b *Sing) AddUsers(p *core.AddUsersParams) (added int, err error) {
 		err = in.(*hysteria2.Inbound).AddUsers(us, id)
 	case "anytls":
 		us := make([]option.AnyTLSUser, len(p.Users))
+		id := make([]int, len(p.Users))
 		for i := range p.Users {
 			us[i] = option.AnyTLSUser{
 				Name:     p.Users[i].Uuid,
 				Password: p.Users[i].Uuid,
 			}
+			id[i] = p.Users[i].Id
 		}
-		err = in.(*anytls.Inbound).AddUsers(us)
+		err = in.(*anytls.Inbound).AddUsers(us, id)
 	}
 	if err != nil {
 		return 0, err
